@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PublicBookingController;
+use App\Http\Controllers\QrCheckInController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\XenditWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -48,13 +49,28 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('tickets/{ticket}/cancel', [TicketController::class, 'cancel'])->name('tickets.cancel');
 });
 
-// ─── Public outlet booking — MUST be last to avoid conflicting with named routes above ──
+// ─── Public outlet routes — MUST be last to avoid conflicting with named routes above ──
 // URL: barberaja.com/{slug}  e.g. barberaja.com/asgarbarber
-// POST booking: barberaja.com/{slug}/book
+// QR check-in: barberaja.com/{slug}/checkin
+// Slots API: barberaja.com/{slug}/slots
+$slugPattern = '[a-z0-9][a-z0-9\-]{1,}';
+
 Route::get('/{slug}', [PublicBookingController::class, 'show'])
     ->name('public.outlet.show')
-    ->where('slug', '[a-z0-9][a-z0-9\-]{1,}');  // min 2 chars, lowercase alphanumeric + dash
+    ->where('slug', $slugPattern);
 
 Route::post('/{slug}/book', [PublicBookingController::class, 'store'])
     ->name('public.outlet.book')
-    ->where('slug', '[a-z0-9][a-z0-9\-]{1,}');
+    ->where('slug', $slugPattern);
+
+Route::get('/{slug}/slots', [PublicBookingController::class, 'slots'])
+    ->name('public.outlet.slots')
+    ->where('slug', $slugPattern);
+
+Route::get('/{slug}/checkin', [QrCheckInController::class, 'show'])
+    ->name('public.checkin.show')
+    ->where('slug', $slugPattern);
+
+Route::post('/{slug}/checkin', [QrCheckInController::class, 'store'])
+    ->name('public.checkin.store')
+    ->where('slug', $slugPattern);

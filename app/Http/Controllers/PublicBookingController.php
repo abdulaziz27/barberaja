@@ -7,15 +7,20 @@ use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\AvailabilityService;
 use App\Services\BookingService;
 use App\Support\TenantContext;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PublicBookingController extends Controller
 {
     public function __construct(
-        private BookingService $bookingService
+        private BookingService $bookingService,
+        private AvailabilityService $availabilityService
     ) {}
 
     /**
@@ -119,5 +124,85 @@ class PublicBookingController extends Controller
         return redirect()
             ->route('public.outlet.show', ['slug' => $slug])
             ->with('success', 'Booking berhasil! Kami akan menghubungi Anda untuk konfirmasi.');
+    }
+
+    /**
+     * Return available time slots as JSON for a given outlet, product, staff, and date.
+     * Used by Alpine.js to populate the slot grid without page reload.
+     *
+     * GET /{slug}/slots?product_id=...&staff_id=...&date=YYYY-MM-DD
+     */
+    public function slots(Request $request, string $slug): JsonResponse
+    {
+        $outlet = Outlet::query()
+            ->withoutGlobalScopes()
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        $productId = $request->query('product_id');
+        $staffId = $request->query('staff_id');
+        $dateStr = $request->query('date');
+
+        if (! $productId || ! $dateStr) {
+            return response()->json(['slots' => []]);
+        }
+
+        // Validate product belongs to this outlet
+        $product = Product::query()
+            ->withoutGlobalScopes()
+            ->where('id', $productId)
+            ->where('tenant_id', $outlet->tenant_id)
+            ->where('outlet_id', $outlet->id)
+            ->where('is_active', true)
+            ->first();
+
+        if (! $product) {
+            return response()->json(['error' => 'Layanan tidak valid.'], 422);
+        }
+
+        try {
+            $date = Carbon::parse($dateStr);
+        } catch (\Exception) {
+            return response()->json(['error' => 'Tanggal tidak valid.'], 422);
+        }
+
+        // Don't allow past dates
+        if ($date->startOfDay()->lt(Carbon::today())) {
+            return response()->json(['slots' => []]);
+        }
+
+        $durationMinutes = (int) $product->duration_minutes;
+        if ($durationMinutes < 1) {
+            return response()->json(['slots' => []]);
+        }
+
+        if ($staffId) {
+            // Validate staff belongs to this outlet
+            $staffBelongs = UserRole::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $outlet->tenant_id)
+                ->where('outlet_id', $outlet->id)
+                ->where('user_id', $staffId)
+                ->whereIn('role', ['staff', 'manager'])
+                ->exists();
+
+            if (! $staffBelongs) {
+                return response()->json(['error' => 'Kapster tidak valid.'], 422);
+            }
+
+            $slots = $this->availabilityService->getSlotsForStaff(
+                $outlet->id,
+                $staffId,
+                $date,
+                $durationMinutes
+            );
+
+            return response()->json(['slots' => $slots]);
+        }
+
+        // No staff selected: return slots for all staff
+        $allStaffSlots = $this->availabilityService->getSlotsForOutlet($outlet, $date, $durationMinutes);
+
+        return response()->json(['staff_slots' => $allStaffSlots]);
     }
 }

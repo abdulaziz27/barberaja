@@ -77,11 +77,14 @@ class TicketController extends Controller
 
         $ticket->load(['outlet', 'staff', 'booking', 'items.product']);
 
+        // Load all product types (service, bundle, retail) for the POS product grid
         $products = Product::query()
-            ->services()
             ->where('is_active', true)
+            ->whereIn('type', [Product::TYPE_SERVICE, Product::TYPE_BUNDLE, Product::TYPE_RETAIL])
+            ->orderBy('type')
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->groupBy('type');
 
         return view('tickets.show', compact('ticket', 'products'));
     }
