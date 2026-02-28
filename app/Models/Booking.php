@@ -35,6 +35,8 @@ class Booking extends Model
         'status',
         'dp_amount',
         'payment_status',
+        'customer_name',
+        'customer_phone',
     ];
 
     protected function casts(): array

@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\DB;
 class TicketService
 {
     public function __construct(
-        private MonetizationService $monetizationService
+        private MonetizationService $monetizationService,
+        private StockService $stockService,
+        private CommissionService $commissionService,
+        private NotificationService $notificationService
     ) {}
 
     /**
@@ -93,11 +96,19 @@ class TicketService
     }
 
     /**
-     * Complete ticket: compute staff commission (percentage only), set totals, status=completed.
+     * Complete ticket:
+     * 1. Deduct retail stock for all retail items.
+     * 2. Set status = completed.
+     * 3. Calculate and persist staff commission via CommissionService.
+     * 4. Apply platform transaction fee via MonetizationService.
+     * 5. Dispatch WA notification (after transaction, non-blocking).
+     *
+     * All steps 1-4 are inside a single DB::transaction.
+     * Stock deduction is idempotent because canComplete() returns false once status=completed.
      */
     public function completeTicket(ServiceTicket $ticket): ServiceTicket
     {
-        return DB::transaction(function () use ($ticket) {
+        $completed = DB::transaction(function () use ($ticket): ServiceTicket {
             if (! $ticket->canComplete()) {
                 throw new \InvalidArgumentException(
                     'Ticket hanya dapat diselesaikan jika masih open/in_progress dan memiliki minimal 1 item.'
@@ -106,12 +117,18 @@ class TicketService
 
             $this->recalculateTicketTotals($ticket);
 
-            $commission = $this->calculateCommissionPercentage($ticket);
-            $ticket->update([
-                'staff_commission' => $commission,
-                'status' => ServiceTicket::STATUS_COMPLETED,
-            ]);
+            // 1. Deduct retail stock
+            $this->stockService->deductTicketRetailStock($ticket);
 
+            // 2. Update status to completed (must happen before calculateCommission)
+            $ticket->update(['status' => ServiceTicket::STATUS_COMPLETED]);
+            $ticket->refresh();
+
+            // 3. Calculate and persist staff commission
+            $commission = $this->commissionService->calculateCommission($ticket);
+            $ticket->update(['staff_commission' => $commission->amount]);
+
+            // 4. Apply platform transaction fee
             $tenant = Tenant::query()->find($ticket->tenant_id);
             if ($tenant) {
                 $this->monetizationService->applyTransactionFee($tenant, $ticket);
@@ -119,6 +136,11 @@ class TicketService
 
             return $ticket->fresh();
         });
+
+        // 5. Dispatch WA notification AFTER transaction commits — non-blocking
+        $this->notificationService->notifyTicketCompleted($completed);
+
+        return $completed;
     }
 
     /**
@@ -145,26 +167,5 @@ class TicketService
             'subtotal' => $sum,
             'total' => $sum,
         ]);
-    }
-
-    /**
-     * Commission percentage only: sum of (item_total * product.commission_value / 100) for items
-     * where product.commission_type = percentage.
-     */
-    protected function calculateCommissionPercentage(ServiceTicket $ticket): float
-    {
-        $ticket->load('items.product');
-        $totalCommission = 0;
-
-        foreach ($ticket->items as $item) {
-            $product = $item->product;
-            if ($product->commission_type !== Product::COMMISSION_PERCENTAGE) {
-                continue;
-            }
-            $pct = (float) $product->commission_value;
-            $totalCommission += (float) $item->total * ($pct / 100);
-        }
-
-        return round($totalCommission, 2);
     }
 }

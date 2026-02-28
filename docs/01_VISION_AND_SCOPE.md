@@ -69,14 +69,20 @@ Karakteristik:
 
 # 5. Model Bisnis
 
-## Revenue Stream
+## Revenue Stream (Tier-Based)
 
-1. Platform Fee
-   Rp 2.000 per booking sukses (dibayar customer)
+| Plan | Fee per Transaksi | Subscription |
+|------|-------------------|--------------|
+| Free | Rp 2.000 per ticket completed | Tidak ada |
+| Pro | Tidak ada | Rp 99.000 per tenant per bulan (dipotong dari escrow) |
+| Enterprise | Custom (dapat 0) | Custom |
 
-2. Subscription
-   Rp 99.000 per outlet per bulan
-   Dipotong otomatis dari saldo escrow
+Catatan:
+- Subscription adalah **per tenant**, bukan per outlet.
+- Fee per transaksi hanya berlaku untuk plan **free**.
+- Pro plan tidak kena fee per transaksi, tapi kena subscription bulanan.
+- Enterprise plan: fee dan subscription dikonfigurasi custom oleh platform admin.
+- Semua pemotongan dilakukan otomatis dari saldo escrow tenant.
 
 ---
 

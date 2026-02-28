@@ -165,12 +165,24 @@ Semua masuk tabel yang sama.
 1.  Customer bayar
 2.  Masuk Xendit balance
 3.  Ledger mencatat:
-    -   Platform revenue
+    -   Platform revenue (hanya untuk plan free: Rp 2.000 per ticket)
     -   Owner escrow
 
 ------------------------------------------------------------------------
 
-## 5.2 Withdrawal Flow
+## 5.2 Monetization Tier
+
+| Plan | Fee per Ticket Completed | Subscription Bulanan |
+|------|--------------------------|----------------------|
+| free | Rp 2.000 (default) | Tidak ada |
+| pro | Tidak ada | Rp 99.000/tenant/bulan |
+| enterprise | Custom | Custom |
+
+Subscription dipotong otomatis dari escrow tenant (bukan per outlet).
+
+------------------------------------------------------------------------
+
+## 5.3 Withdrawal Flow
 
 Status: - pending - success - failed - reversed
 

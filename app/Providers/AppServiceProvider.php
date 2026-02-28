@@ -19,6 +19,20 @@ class AppServiceProvider extends ServiceProvider
             \App\Contracts\XenditDisbursementClient::class,
             \App\Services\XenditDisbursementClient::class
         );
+
+        // WhatsApp client: resolved based on WHATSAPP_DRIVER env variable.
+        // Default: NullWhatsAppClient (logs only, no real send).
+        $this->app->bind(
+            \App\Contracts\WhatsAppClient::class,
+            function ($app) {
+                $driver = config('whatsapp.driver', 'null');
+                return match ($driver) {
+                    // Add real drivers here as they are implemented:
+                    // 'fonnte' => new \App\Services\FonnteWhatsAppClient(config('whatsapp.fonnte.token')),
+                    default => new \App\Services\NullWhatsAppClient(),
+                };
+            }
+        );
     }
 
     public function boot(): void

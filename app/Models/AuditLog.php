@@ -21,6 +21,8 @@ class AuditLog extends Model
     public const ACTION_SUBSCRIPTION_DEDUCTION_OVERDUE = 'subscription_deduction_overdue';
     public const ACTION_PLAN_CHANGE = 'plan_change';
     public const ACTION_ROLE_CHANGE = 'role_change';
+    public const ACTION_STOCK_DEDUCTION = 'stock_deduction';
+    public const ACTION_STOCK_INCREASE = 'stock_increase';
 
     protected $fillable = [
         'user_id',

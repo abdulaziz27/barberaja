@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\XenditWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -46,3 +47,14 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('tickets/{ticket}/complete', [TicketController::class, 'complete'])->name('tickets.complete');
     Route::post('tickets/{ticket}/cancel', [TicketController::class, 'cancel'])->name('tickets.cancel');
 });
+
+// ─── Public outlet booking — MUST be last to avoid conflicting with named routes above ──
+// URL: barberaja.com/{slug}  e.g. barberaja.com/asgarbarber
+// POST booking: barberaja.com/{slug}/book
+Route::get('/{slug}', [PublicBookingController::class, 'show'])
+    ->name('public.outlet.show')
+    ->where('slug', '[a-z0-9][a-z0-9\-]{1,}');  // min 2 chars, lowercase alphanumeric + dash
+
+Route::post('/{slug}/book', [PublicBookingController::class, 'store'])
+    ->name('public.outlet.book')
+    ->where('slug', '[a-z0-9][a-z0-9\-]{1,}');

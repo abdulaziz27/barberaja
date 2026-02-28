@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class BookingService
 {
+    public function __construct(
+        private NotificationService $notificationService
+    ) {}
+
     /**
      * Check overlap per BOOKING_ENGINE_SPEC:
      * (start_time < existing_end_time) AND (end_time > existing_start_time) => conflict.
@@ -40,10 +44,11 @@ class BookingService
 
     /**
      * Create booking (status=confirmed). No DP. All in transaction.
+     * Dispatches WA notification after transaction commits (non-blocking).
      */
     public function createBooking(array $data): Booking
     {
-        return DB::transaction(function () use ($data) {
+        $booking = DB::transaction(function () use ($data): Booking {
             $startTime = Carbon::parse($data['start_time']);
             $durationMinutes = (int) $data['duration_minutes'];
 
@@ -81,8 +86,15 @@ class BookingService
                 'status' => Booking::STATUS_CONFIRMED,
                 'dp_amount' => 0,
                 'payment_status' => 'paid',
+                'customer_name' => $data['customer_name'] ?? null,
+                'customer_phone' => $data['customer_phone'] ?? null,
             ]);
         });
+
+        // Dispatch WA notification AFTER transaction commits — non-blocking
+        $this->notificationService->notifyBookingConfirmed($booking);
+
+        return $booking;
     }
 
     /**

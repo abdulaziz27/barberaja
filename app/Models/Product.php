@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -17,6 +18,8 @@ class Product extends Model
     use SoftDeletes;
 
     public const TYPE_SERVICE = 'service';
+    public const TYPE_BUNDLE = 'bundle';
+    public const TYPE_RETAIL = 'retail';
 
     public const COMMISSION_NONE = 'none';
     public const COMMISSION_PERCENTAGE = 'percentage';
@@ -54,8 +57,53 @@ class Product extends Model
         return $this->belongsTo(Outlet::class);
     }
 
+    /**
+     * Items (child services) that belong to this bundle.
+     */
+    public function bundleItems(): HasMany
+    {
+        return $this->hasMany(ProductBundleItem::class, 'bundle_id');
+    }
+
+    /**
+     * Bundle memberships: bundles that contain this product as a child.
+     */
+    public function bundleOf(): HasMany
+    {
+        return $this->hasMany(ProductBundleItem::class, 'product_id');
+    }
+
+    // ─── Scopes ───────────────────────────────────────────────────────────────
+
     public function scopeServices($query)
     {
         return $query->where('type', self::TYPE_SERVICE);
+    }
+
+    public function scopeBundles($query)
+    {
+        return $query->where('type', self::TYPE_BUNDLE);
+    }
+
+    public function scopeRetail($query)
+    {
+        return $query->where('type', self::TYPE_RETAIL);
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    public function isBundle(): bool
+    {
+        return $this->type === self::TYPE_BUNDLE;
+    }
+
+    public function isService(): bool
+    {
+        return $this->type === self::TYPE_SERVICE;
+    }
+
+    public function isRetail(): bool
+    {
+        return $this->type === self::TYPE_RETAIL;
     }
 }
