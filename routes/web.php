@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PublicBookingController;
 use App\Http\Controllers\QrCheckInController;
@@ -28,9 +30,8 @@ Route::get('admin/dashboard', [AdminDashboardController::class, 'index'])
     ->name('admin.dashboard');
 
 Route::middleware(['auth', 'tenant'])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/chart-data', [DashboardController::class, 'chartData'])->name('dashboard.chart-data');
 
     Route::resource('products', ProductController::class)->except('show');
 
@@ -47,6 +48,9 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::post('tickets/{ticket}/start', [TicketController::class, 'start'])->name('tickets.start');
     Route::post('tickets/{ticket}/complete', [TicketController::class, 'complete'])->name('tickets.complete');
     Route::post('tickets/{ticket}/cancel', [TicketController::class, 'cancel'])->name('tickets.cancel');
+
+    Route::get('billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::post('billing/upgrade', [BillingController::class, 'upgrade'])->name('billing.upgrade');
 });
 
 // ─── Public outlet routes — MUST be last to avoid conflicting with named routes above ──

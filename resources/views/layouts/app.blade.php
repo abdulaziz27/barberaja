@@ -16,6 +16,7 @@
                 <a href="{{ route('products.index') }}" class="text-sm font-medium text-slate-400 hover:text-white">Layanan</a>
                 <a href="{{ route('bookings.index') }}" class="text-sm font-medium text-slate-400 hover:text-white">Booking</a>
                 <a href="{{ route('tickets.index') }}" class="text-sm font-medium text-slate-400 hover:text-white">POS</a>
+                <a href="{{ route('billing.index') }}" class="text-sm font-medium text-slate-400 hover:text-white">Billing</a>
                 @can('platformAdmin')
                     <a href="{{ route('admin.dashboard') }}" class="text-sm font-medium text-amber-400 hover:text-amber-300">Admin</a>
                 @endcan
